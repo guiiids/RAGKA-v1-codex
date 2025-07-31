@@ -352,8 +352,8 @@ class EnhancedSimpleRedisRAGAssistant:
         result = re.sub(r"^\[(\d+)\]$", repl, result, flags=re.MULTILINE)
         # 2. Replace [n] after specific allowed characters (no alternation)
         result = re.sub(r"(?<=[\s\)\]\>\.,;:\"'\-_/])\[(\d+)\]", repl, result)
-        # 3. Paranoia pass: any stray [n] as its own token (should not occur if above covers all)
-        result = re.sub(r"\[(\d+)\]", repl, result)
+        # 3. Paranoia pass: any stray [n] not already converted (avoid nested anchors)
+        result = re.sub(r"(?<!>)\[(\d+)\]", repl, result)
         return result
 
     def _rebuild_citation_map(self, cited_sources):
