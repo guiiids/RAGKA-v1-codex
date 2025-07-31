@@ -322,14 +322,19 @@ class EnhancedSimpleRedisRAGAssistant:
         self, answer: str, citations: list, message_id: str
     ) -> str:
         """
-        Replace all [n] markdown citation markers in the answer with clickable
+        Replace all ``[n]`` markdown citation markers in the answer with clickable
         HTML hyperlinks using the ``session-citation-link`` class expected by
-        ``session-citation-system.js``.
-        This includes cases where [n] is adjacent to text, punctuation, or at line ends.
-        The data attributes and link href/id will match ``session-citation-system``
-        expectations.
+        ``session-citation-system.js``. This includes cases where ``[n]`` is
+        adjacent to text, punctuation or at line ends. The data attributes and
+        link ``href``/``id`` will match ``session-citation-system`` expectations.
 
-        This version avoids variable-width look-behind to prevent regex errors in Python.
+        The substitution is idempotent – running this method multiple times will
+        not re-wrap already converted citation anchors. A simple negative
+        lookbehind/ahead pattern is used to avoid matching links that were
+        previously processed.
+
+        This version avoids variable-width look-behind to prevent regex errors in
+        Python.
         """
 
         def repl(match):
@@ -348,12 +353,9 @@ class EnhancedSimpleRedisRAGAssistant:
         result = re.sub(r"\[(\d+)\]ref=[^\]\s]+", r"[\1]", result)
         result = re.sub(r"\[(\d+)\]href=[^\]\s]+", r"[\1]", result)
 
-        # 1. Replace [n] at the start of a line (including start of text)
-        result = re.sub(r"^\[(\d+)\]$", repl, result, flags=re.MULTILINE)
-        # 2. Replace [n] after specific allowed characters (no alternation)
-        result = re.sub(r"(?<=[\s\)\]\>\.,;:\"'\-_/])\[(\d+)\]", repl, result)
-        # 3. Paranoia pass: any stray [n] as its own token (should not occur if above covers all)
-        result = re.sub(r"\[(\d+)\]", repl, result)
+        # Replace any "[n]" tokens that are not already wrapped in an anchor
+        # The negative lookbehind/ahead ensures idempotency on repeated calls
+        result = re.sub(r"(?<!>)\[(\d+)\](?!<)", repl, result)
         return result
 
     def _rebuild_citation_map(self, cited_sources):
