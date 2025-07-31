@@ -1,7 +1,7 @@
 """
 Simple Redis-Backed RAG Assistant (No Intelligence)
 - Always: retrieves last N turns from Redis
-- Always: searches knowledge base  
+- Always: searches knowledge base
 - Combines history + KB context with basic formatting
 - Responds, stores Q&A in Redis
 - No query classification, no conversation intelligence, no routing
@@ -9,7 +9,11 @@ Simple Redis-Backed RAG Assistant (No Intelligence)
 
 import os
 from typing import List, Tuple, Dict, Any, Optional, Union
-from services.session_memory import SessionMemory, PostgresSessionMemory, RedisSessionMemory
+from services.session_memory import (
+    SessionMemory,
+    PostgresSessionMemory,
+    RedisSessionMemory,
+)
 import re
 from openai_service import OpenAIService
 from azure.search.documents import SearchClient
@@ -24,7 +28,7 @@ from config import (
     AZURE_SEARCH_SERVICE as SEARCH_ENDPOINT,
     AZURE_SEARCH_INDEX as SEARCH_INDEX,
     AZURE_SEARCH_KEY as SEARCH_KEY,
-    VECTOR_FIELD
+    VECTOR_FIELD,
 )
 import json
 import time
@@ -34,17 +38,26 @@ from services.session_citation_registry import SessionCitationRegistry
 
 # --------- Advanced RAG Logic borrowed & adapted from rag_assistant_v2.py --------- #
 
+
 def chunk_document(text: str, max_chunk_size: int = 1000) -> List[str]:
     if len(text) <= max_chunk_size:
         return [text]
-    sections = re.split(r'((?:^|\n)(?:#+\s+[^\n]+|\d+\.\s+[^\n]+|[A-Z][^\n:]{5,40}:))', text, flags=re.MULTILINE)
+    sections = re.split(
+        r"((?:^|\n)(?:#+\s+[^\n]+|\d+\.\s+[^\n]+|[A-Z][^\n:]{5,40}:))",
+        text,
+        flags=re.MULTILINE,
+    )
     chunks = []
     current_chunk = ""
     current_headers = []
     for i, section in enumerate(sections):
         if not section.strip():
             continue
-        if re.match(r'(?:^|\n)(?:#+\s+[^\n]+|\d+\.\s+[^\n]+|[A-Z][^\n:]{5,40}:)', section, flags=re.MULTILINE):
+        if re.match(
+            r"(?:^|\n)(?:#+\s+[^\n]+|\d+\.\s+[^\n]+|[A-Z][^\n:]{5,40}:)",
+            section,
+            flags=re.MULTILINE,
+        ):
             current_headers.append(section.strip())
         elif i > 0:
             if len(current_chunk) + len(section) > max_chunk_size:
@@ -58,25 +71,27 @@ def chunk_document(text: str, max_chunk_size: int = 1000) -> List[str]:
         chunks.append(full_chunk)
     if not chunks:
         for i in range(0, len(text), max_chunk_size):
-            chunks.append(text[i:i + max_chunk_size])
+            chunks.append(text[i : i + max_chunk_size])
     return chunks
+
 
 def extract_metadata(chunk: str) -> Dict[str, Any]:
     metadata = {}
-    metadata["is_procedural"] = bool(re.search(r'\d+\.\s+', chunk))
-    if re.search(r'^#+\s+', chunk):
-        heading_match = re.search(r'^(#+)\s+', chunk)
+    metadata["is_procedural"] = bool(re.search(r"\d+\.\s+", chunk))
+    if re.search(r"^#+\s+", chunk):
+        heading_match = re.search(r"^(#+)\s+", chunk)
         metadata["section_level"] = len(heading_match.group(1)) if heading_match else 0
-    step_numbers = re.findall(r'(\d+)\.\s+', chunk)
+    step_numbers = re.findall(r"(\d+)\.\s+", chunk)
     if step_numbers:
         metadata["steps"] = [int(num) for num in step_numbers]
         metadata["first_step"] = min(metadata["steps"])
         metadata["last_step"] = max(metadata["steps"])
     metadata["is_procedure_start"] = bool(
-        re.search(r'(?:how to|steps to|procedure for|guide to)', chunk.lower()) and
-        metadata.get("is_procedural", False)
+        re.search(r"(?:how to|steps to|procedure for|guide to)", chunk.lower())
+        and metadata.get("is_procedural", False)
     )
     return metadata
+
 
 def retrieve_with_hierarchy(results: List[Dict]) -> List[Dict]:
     parent_docs = {}
@@ -85,7 +100,9 @@ def retrieve_with_hierarchy(results: List[Dict]) -> List[Dict]:
         if parent_id and parent_id not in parent_docs:
             parent_docs[parent_id] = result.get("relevance", 0.0)
     ordered_results = []
-    for parent_id, score in sorted(parent_docs.items(), key=lambda x: x[1], reverse=True)[:3]:
+    for parent_id, score in sorted(
+        parent_docs.items(), key=lambda x: x[1], reverse=True
+    )[:3]:
         parent_chunks = [r for r in results if r.get("parent_id", "") == parent_id]
         for chunk in parent_chunks:
             chunk["metadata"] = extract_metadata(chunk.get("chunk", ""))
@@ -93,6 +110,7 @@ def retrieve_with_hierarchy(results: List[Dict]) -> List[Dict]:
     if not ordered_results:
         return results
     return ordered_results
+
 
 def prioritize_procedural_content(results: List[Dict]) -> List[Dict]:
     for result in results:
@@ -108,36 +126,41 @@ def prioritize_procedural_content(results: List[Dict]) -> List[Dict]:
     procedural_results.sort(key=lambda x: x.get("metadata", {}).get("first_step", 999))
     return procedural_results + informational_results
 
+
 def format_context_text(text: str) -> str:
-    sentences = re.split(r'(?<=[.!?])\s+', text.strip())
+    sentences = re.split(r"(?<=[.!?])\s+", text.strip())
     formatted = "\n\n".join(sentence for sentence in sentences if sentence)
-    formatted = re.sub(r'(?<=\n\n)([A-Z][^\n:]{5,40})(?=\n\n)', r'**\1**', formatted)
-    formatted = re.sub(r'(\d+\.\s+)', r'\n\1', formatted)
+    formatted = re.sub(r"(?<=\n\n)([A-Z][^\n:]{5,40})(?=\n\n)", r"**\1**", formatted)
+    formatted = re.sub(r"(\d+\.\s+)", r"\n\1", formatted)
     return formatted
 
+
 def format_procedural_context(text: str) -> str:
-    text = re.sub(r'(\d+\.\s+)', r'\n\1', text)
-    text = re.sub(r'(\•\s+)', r'\n\1', text)
-    text = re.sub(r'([A-Z][^\n:]{5,40}:)', r'\n**\1**\n', text)
-    paragraphs = text.split('\n\n')
+    text = re.sub(r"(\d+\.\s+)", r"\n\1", text)
+    text = re.sub(r"(\•\s+)", r"\n\1", text)
+    text = re.sub(r"([A-Z][^\n:]{5,40}:)", r"\n**\1**\n", text)
+    paragraphs = text.split("\n\n")
     formatted = "\n\n".join(p.strip() for p in paragraphs if p.strip())
     return formatted
 
+
 def is_procedural_content(text: str) -> bool:
-    if re.search(r'\d+\.\s+[A-Z]', text):
+    if re.search(r"\d+\.\s+[A-Z]", text):
         return True
-    instructional_keywords = ['follow', 'steps', 'procedure', 'instructions', 'guide']
+    instructional_keywords = ["follow", "steps", "procedure", "instructions", "guide"]
     if any(keyword in text.lower() for keyword in instructional_keywords):
         return True
     return False
 
+
 def generate_unique_source_id(content: str = "", timestamp: float = None) -> str:
     if timestamp is None:
         timestamp = int(time.time() * 1000)
-    hash_input = f"{content}_{timestamp}".encode('utf-8')
+    hash_input = f"{content}_{timestamp}".encode("utf-8")
     content_hash = hashlib.md5(hash_input).hexdigest()[:8]
     unique_id = f"S_{timestamp}_{content_hash}"
     return unique_id
+
 
 # --------- System Prompts --------- #
 DEFAULT_SYSTEM_PROMPT = """
@@ -190,8 +213,14 @@ Example procedure:
 </user_query>
 """
 
+
 class EnhancedSimpleRedisRAGAssistant:
-    def __init__(self, session_id: str, max_history: int = 5, memory: Optional[SessionMemory] = None):
+    def __init__(
+        self,
+        session_id: str,
+        max_history: int = 5,
+        memory: Optional[SessionMemory] = None,
+    ):
         self.session_id = session_id
         self.max_history = max_history
         self.memory = memory or PostgresSessionMemory(max_turns=max_history)
@@ -203,6 +232,7 @@ class EnhancedSimpleRedisRAGAssistant:
             deployment_name=CHAT_DEPLOYMENT,
         )
         from openai import AzureOpenAI
+
         self.embeddings_client = AzureOpenAI(
             azure_endpoint=OPENAI_ENDPOINT,
             api_key=OPENAI_KEY,
@@ -224,7 +254,9 @@ class EnhancedSimpleRedisRAGAssistant:
             print(f"EMBEDDING DEBUG: type={type(embedding)}, len={len(embedding)}")
             print(f"EMBEDDING DEBUG: resp.data has {len(resp.data)} item(s)")
             if len(resp.data) != 1:
-                print("EMBEDDING DEBUG WARNING: resp.data contains multiple embeddings! This may cause dimensionality errors.")
+                print(
+                    "EMBEDDING DEBUG WARNING: resp.data contains multiple embeddings! This may cause dimensionality errors."
+                )
             return embedding
         except Exception:
             return None
@@ -235,11 +267,11 @@ class EnhancedSimpleRedisRAGAssistant:
             return []
         vec_q = self.search_client.search(
             search_text=query,
-            vector_queries=[VectorizedQuery(
-                vector=q_vec,
-                k_nearest_neighbors=8,
-                fields=VECTOR_FIELD
-            )],
+            vector_queries=[
+                VectorizedQuery(
+                    vector=q_vec, k_nearest_neighbors=8, fields=VECTOR_FIELD
+                )
+            ],
             select=["chunk", "title", "parent_id"],
             top=8,
         )
@@ -280,24 +312,32 @@ class EnhancedSimpleRedisRAGAssistant:
 
     def _select_system_prompt(self, kb_chunks: List[Dict], user_query: str) -> str:
         # Simple procedural detection: use procedural prompt if query or chunk suggests
-        if any(is_procedural_content(r["chunk"]) for r in kb_chunks) or is_procedural_content(user_query):
+        if any(
+            is_procedural_content(r["chunk"]) for r in kb_chunks
+        ) or is_procedural_content(user_query):
             return PROCEDURAL_SYSTEM_PROMPT
         return DEFAULT_SYSTEM_PROMPT
 
-    def _convert_citations_to_links(self, answer: str, citations: list, message_id: str) -> str:
+    def _convert_citations_to_links(
+        self, answer: str, citations: list, message_id: str
+    ) -> str:
         """
-        Replace all [n] markdown citation markers in the answer with clickable HTML hyperlinks (class="citation-link").
+        Replace all [n] markdown citation markers in the answer with clickable
+        HTML hyperlinks using the ``session-citation-link`` class expected by
+        ``session-citation-system.js``.
         This includes cases where [n] is adjacent to text, punctuation, or at line ends.
-        The data attributes and link href/id will match CitationUtils v2 expectations.
+        The data attributes and link href/id will match ``session-citation-system``
+        expectations.
 
         This version avoids variable-width look-behind to prevent regex errors in Python.
         """
+
         def repl(match):
             idx = match.group(1)
             # Output all possible frontend-expected attributes and explicit inline onclick
             return (
-                f'<a href="#source-{message_id}-{idx}" class="citation-link" '
-                f'data-message-id="{message_id}" data-index="{idx}" '
+                f'<a href="javascript:void(0);" '
+                f'class="session-citation-link text-blue-600 hover:text-blue-800" '
                 f'data-citation-id="{idx}" '
                 f'onclick="handleSessionCitationClick({idx})">[{idx}]</a>'
             )
@@ -335,7 +375,9 @@ class EnhancedSimpleRedisRAGAssistant:
         suitable for sidebar or downstream application.
         """
         # 1. Retrieve history from Redis
-        history = self.memory.get_history(self.session_id, last_n_turns=self.max_history)
+        history = self.memory.get_history(
+            self.session_id, last_n_turns=self.max_history
+        )
 
         print(f"[DEBUG] User query: {user_query}")
 
@@ -343,7 +385,9 @@ class EnhancedSimpleRedisRAGAssistant:
         kb_chunks = self._search_kb(user_query)
         print(f"[DEBUG] KB Chunks Retrieved: {len(kb_chunks)}")
         for idx, chunk in enumerate(kb_chunks, 1):
-            print(f"[DEBUG] KB Chunk {idx}: title={chunk.get('title')}, parent_id={chunk.get('parent_id')}, content_snippet={chunk.get('chunk','')[:80]}")
+            print(
+                f"[DEBUG] KB Chunk {idx}: title={chunk.get('title')}, parent_id={chunk.get('parent_id')}, content_snippet={chunk.get('chunk','')[:80]}"
+            )
 
         # 3. Compile the context string (history + KB in advanced format)
         history_section = self._compile_history_context(history)
@@ -358,41 +402,49 @@ class EnhancedSimpleRedisRAGAssistant:
         # 4. Send to LLM (OpenAIService)
         messages = [
             {"role": "system", "content": sys_prompt},
-            {"role": "user", "content": context + f"\n\nUser question: {user_query}"}
+            {"role": "user", "content": context + f"\n\nUser question: {user_query}"},
         ]
-        answer = self.openai_svc.get_chat_response(messages=messages, max_completion_tokens=900)
+        answer = self.openai_svc.get_chat_response(
+            messages=messages, max_completion_tokens=900
+        )
         print(f"[DEBUG] LLM Answer: {answer[:500]}")
 
         # -- Citation assembly: Each kb_chunk corresponds to a [n] marker --
         citations = []
         for idx, chunk in enumerate(kb_chunks, 1):
             title = chunk.get("title") or f"Source {idx}"
-            citations.append({
-                'index': idx,
-                'display_id': str(idx),
-                'title': title,
-                'content': chunk.get("chunk", ""),
-                'parent_id': chunk.get("parent_id", ""),
-                'id': f"source_{idx}"
-            })
+            citations.append(
+                {
+                    "index": idx,
+                    "display_id": str(idx),
+                    "title": title,
+                    "content": chunk.get("chunk", ""),
+                    "parent_id": chunk.get("parent_id", ""),
+                    "id": f"source_{idx}",
+                }
+            )
         print(f"[DEBUG] Citations Assembled: {len(citations)}")
         for c in citations:
             print(f"[DEBUG] Citation: {c}")
 
         # -- Register sources with session citation registry --
-        registered_sources = self.citation_registry.register_sources(self.session_id, citations)
+        registered_sources = self.citation_registry.register_sources(
+            self.session_id, citations
+        )
         print(f"[DEBUG] Registered Sources: {registered_sources}")
 
         # Use the registered sources with their assigned citation IDs
         for i, source in enumerate(registered_sources):
-            if 'citation_id' in source:
-                citations[i]['citation_id'] = source['citation_id']
-                citations[i]['display_id'] = str(source['citation_id'])
+            if "citation_id" in source:
+                citations[i]["citation_id"] = source["citation_id"]
+                citations[i]["display_id"] = str(source["citation_id"])
 
         # --- Convert citations in answer to HTML links ---
         # Use a unique message_id for the citation links (e.g., session_id + timestamp)
         message_id = f"{self.session_id}_{int(time.time() * 1000)}"
-        answer_with_links = self._convert_citations_to_links(answer, citations, message_id)
+        answer_with_links = self._convert_citations_to_links(
+            answer, citations, message_id
+        )
         print(f"[DEBUG] Answer with citation links: {answer_with_links[:500]}")
 
         # Store the turn in Redis
@@ -410,7 +462,9 @@ class EnhancedSimpleRedisRAGAssistant:
         Ensures that all streamed chunks contain citation links (never raw [n]) after citation registration.
         """
         # 1. Retrieve history from Redis
-        history = self.memory.get_history(self.session_id, last_n_turns=self.max_history)
+        history = self.memory.get_history(
+            self.session_id, last_n_turns=self.max_history
+        )
 
         # 2. Search the KB
         kb_chunks = self._search_kb(user_query)
@@ -427,53 +481,66 @@ class EnhancedSimpleRedisRAGAssistant:
 
         messages = [
             {"role": "system", "content": sys_prompt},
-            {"role": "user", "content": context + f"\n\nUser question: {user_query}"}
+            {"role": "user", "content": context + f"\n\nUser question: {user_query}"},
         ]
 
         # 4a. Prepare citation metadata before streaming
         citations = []
         for idx, chunk in enumerate(kb_chunks, 1):
             title = chunk.get("title") or f"Source {idx}"
-            citations.append({
-                'index': idx,
-                'display_id': str(idx),
-                'title': title,
-                'content': chunk.get("chunk", ""),
-                'parent_id': chunk.get("parent_id", ""),
-                'id': f"source_{idx}"
-            })
+            citations.append(
+                {
+                    "index": idx,
+                    "display_id": str(idx),
+                    "title": title,
+                    "content": chunk.get("chunk", ""),
+                    "parent_id": chunk.get("parent_id", ""),
+                    "id": f"source_{idx}",
+                }
+            )
 
         # Register sources with session citation registry (once per streamed message)
-        registered_sources = self.citation_registry.register_sources(self.session_id, citations)
+        registered_sources = self.citation_registry.register_sources(
+            self.session_id, citations
+        )
         # Use the registered sources with their assigned citation IDs
         for i, source in enumerate(registered_sources):
-            if 'citation_id' in source:
-                citations[i]['citation_id'] = source['citation_id']
-                citations[i]['display_id'] = str(source['citation_id'])
+            if "citation_id" in source:
+                citations[i]["citation_id"] = source["citation_id"]
+                citations[i]["display_id"] = str(source["citation_id"])
 
         # Emit metadata event FIRST so frontend can associate citation IDs
-        yield {'sources': registered_sources}
+        yield {"sources": registered_sources}
 
         # Stream from OpenAIService and post-process citation links in-stream
         # Use a stable message_id for the links (session + ms timestamp at stream start)
         import time
+
         message_id = f"{self.session_id}_{int(time.time() * 1000)}"
 
         # We buffer up to each chunk then compute the linked HTML, yielding only the DELTA to not resend content
         full_answer = ""
         last_yielded = 0
-        for chunk in self.openai_svc.get_chat_response_stream(messages=messages, max_completion_tokens=900):
+        for chunk in self.openai_svc.get_chat_response_stream(
+            messages=messages, max_completion_tokens=900
+        ):
             full_answer += chunk
             # Always convert all [n] in full_answer-so-far to citation links with known citations/message_id
-            answer_with_links = self._convert_citations_to_links(full_answer, citations, message_id)
+            answer_with_links = self._convert_citations_to_links(
+                full_answer, citations, message_id
+            )
             # Yield only the new stuff (i.e., skipping any previously yielded portion)
             new_content = answer_with_links[last_yielded:]
             if new_content:
                 yield new_content
                 last_yielded = len(answer_with_links)
         # 5. Store the fully linked answer using session memory backend
-        final_answer = self._convert_citations_to_links(full_answer, citations, message_id)
-        summary = self.openai_svc.summarize_text(f"User: {user_query}\nAssistant: {final_answer}")
+        final_answer = self._convert_citations_to_links(
+            full_answer, citations, message_id
+        )
+        summary = self.openai_svc.summarize_text(
+            f"User: {user_query}\nAssistant: {final_answer}"
+        )
         self.memory.store_turn(self.session_id, user_query, final_answer, summary)
 
     def clear_conversation_history(self) -> None:
@@ -485,11 +552,15 @@ class EnhancedSimpleRedisRAGAssistant:
 
     def get_cache_stats(self) -> Dict[str, Any]:
         """Get basic cache statistics"""
-        history = self.memory.get_history(self.session_id, last_n_turns=100)  # Get all history
+        history = self.memory.get_history(
+            self.session_id, last_n_turns=100
+        )  # Get all history
         stats = {
             "session_id": self.session_id,
             "conversation_turns": len(history),
-            "citation_map_size": len(getattr(self, "_display_ordered_citation_map", {}))
+            "citation_map_size": len(
+                getattr(self, "_display_ordered_citation_map", {})
+            ),
         }
         stats.update(self.memory.get_stats())
         return stats
