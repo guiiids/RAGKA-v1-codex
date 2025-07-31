@@ -1,9 +1,8 @@
-"""
-Prints the full conversation history for the 'localtest' session in the simplified Redis-backed RAG assistant.
-Shows what Q&A context is available from memory_service that would be sent to the model.
-"""
+"""Utility to inspect stored conversation history for a session."""
 
-from services.simple_redis_memory import memory_service
+from services.session_memory import PostgresSessionMemory
+
+memory_service = PostgresSessionMemory()
 
 if __name__ == "__main__":
     session_id = "localtest"

@@ -38,6 +38,7 @@ from openai_service import OpenAIService
 from rag_improvement_logging import setup_improvement_logging
 from services.redis_service import redis_service
 from services.session_citation_registry import SessionCitationRegistry
+from services.session_memory import PostgresSessionMemory
 from services.session_citation_registry import session_citation_registry
 
 # Set up dedicated logging for the improved implementation
@@ -75,7 +76,10 @@ def get_rag_assistant(session_id):
     """Get or create a SimpleRedisRAGAssistant for the given session ID (no intelligent routing, just basic memory + search)."""
     if session_id not in rag_assistants:
         logger.info(f"Creating new SimpleRedisRAGAssistant for session {session_id}")
-        rag_assistants[session_id] = EnhancedSimpleRedisRAGAssistant(session_id=session_id)
+        rag_assistants[session_id] = EnhancedSimpleRedisRAGAssistant(
+            session_id=session_id,
+            memory=PostgresSessionMemory()
+        )
         # Log Redis connection status
         if redis_service.is_connected():
             logger.info(f"Redis connected for session {session_id}")

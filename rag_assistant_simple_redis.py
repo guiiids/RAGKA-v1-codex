@@ -9,7 +9,7 @@ Simple Redis-Backed RAG Assistant (No Intelligence)
 
 import os
 from typing import List, Tuple, Dict, Any, Optional, Union
-from services.simple_redis_memory import memory_service
+from services.session_memory import SessionMemory, PostgresSessionMemory, RedisSessionMemory
 import re
 from openai_service import OpenAIService
 from azure.search.documents import SearchClient
@@ -191,9 +191,10 @@ Example procedure:
 """
 
 class EnhancedSimpleRedisRAGAssistant:
-    def __init__(self, session_id: str, max_history: int = 5):
+    def __init__(self, session_id: str, max_history: int = 5, memory: Optional[SessionMemory] = None):
         self.session_id = session_id
         self.max_history = max_history
+        self.memory = memory or PostgresSessionMemory(max_turns=max_history)
         self.citation_registry = SessionCitationRegistry()
         self.openai_svc = OpenAIService(
             azure_endpoint=OPENAI_ENDPOINT,
@@ -334,7 +335,7 @@ class EnhancedSimpleRedisRAGAssistant:
         suitable for sidebar or downstream application.
         """
         # 1. Retrieve history from Redis
-        history = memory_service.get_history(self.session_id, last_n_turns=self.max_history)
+        history = self.memory.get_history(self.session_id, last_n_turns=self.max_history)
 
         print(f"[DEBUG] User query: {user_query}")
 
@@ -395,7 +396,9 @@ class EnhancedSimpleRedisRAGAssistant:
         print(f"[DEBUG] Answer with citation links: {answer_with_links[:500]}")
 
         # Store the turn in Redis
-        memory_service.store_turn(self.session_id, user_query, answer_with_links)
+        summary_text = f"User: {user_query}\nAssistant: {answer_with_links}"
+        summary = self.openai_svc.summarize_text(summary_text)
+        self.memory.store_turn(self.session_id, user_query, answer_with_links, summary)
 
         # Return the answer with links and the registered sources
         return answer_with_links, registered_sources
@@ -407,7 +410,7 @@ class EnhancedSimpleRedisRAGAssistant:
         Ensures that all streamed chunks contain citation links (never raw [n]) after citation registration.
         """
         # 1. Retrieve history from Redis
-        history = memory_service.get_history(self.session_id, last_n_turns=self.max_history)
+        history = self.memory.get_history(self.session_id, last_n_turns=self.max_history)
 
         # 2. Search the KB
         kb_chunks = self._search_kb(user_query)
@@ -468,25 +471,28 @@ class EnhancedSimpleRedisRAGAssistant:
             if new_content:
                 yield new_content
                 last_yielded = len(answer_with_links)
-        # 5. Store the fully linked answer in Redis (not raw LLM output)
-        memory_service.store_turn(self.session_id, user_query, self._convert_citations_to_links(full_answer, citations, message_id))
+        # 5. Store the fully linked answer using session memory backend
+        final_answer = self._convert_citations_to_links(full_answer, citations, message_id)
+        summary = self.openai_svc.summarize_text(f"User: {user_query}\nAssistant: {final_answer}")
+        self.memory.store_turn(self.session_id, user_query, final_answer, summary)
 
     def clear_conversation_history(self) -> None:
         """Clear conversation history for this session"""
-        memory_service.clear(self.session_id)
+        self.memory.clear(self.session_id)
         # Also clear the citation map
         if hasattr(self, "_display_ordered_citation_map"):
             self._display_ordered_citation_map = {}
 
     def get_cache_stats(self) -> Dict[str, Any]:
         """Get basic cache statistics"""
-        history = memory_service.get_history(self.session_id, last_n_turns=100)  # Get all history
-        return {
+        history = self.memory.get_history(self.session_id, last_n_turns=100)  # Get all history
+        stats = {
             "session_id": self.session_id,
             "conversation_turns": len(history),
-            "redis_connected": memory_service._client.ping() if hasattr(memory_service, '_client') else False,
             "citation_map_size": len(getattr(self, "_display_ordered_citation_map", {}))
         }
+        stats.update(self.memory.get_stats())
+        return stats
 
     def clear_cache(self, cache_type: str = None) -> bool:
         """Clear cache (same as clear conversation history for this implementation)"""
