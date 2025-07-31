@@ -151,3 +151,15 @@ class OpenAIService:
         except Exception as e:
             logger.error(f"Error with streaming OpenAI API: {e}")
             raise
+
+    def summarize_text(self, text: str, max_tokens: int = 60) -> str:
+        """Return a short summary for storage in session memory."""
+        messages = [
+            {"role": "system", "content": "Summarize the following text in 40 words or less."},
+            {"role": "user", "content": text},
+        ]
+        try:
+            return self.get_chat_response(messages, max_tokens=max_tokens)
+        except Exception:
+            logger.exception("OpenAI summary generation failed")
+            return ""
