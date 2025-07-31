@@ -8,6 +8,7 @@ import os
 import json
 from typing import List, Tuple, Optional
 import redis
+from .session_memory import SessionMemory
 
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
@@ -15,7 +16,7 @@ REDIS_DB = int(os.getenv("REDIS_DB", 0))
 REDIS_PASS = os.getenv("REDIS_PASSWORD", None)
 REDIS_EXPIRATION = int(os.getenv("REDIS_DEFAULT_EXPIRATION", "604800"))  # 7 days
 
-class SimpleRedisMemory:
+class SimpleRedisMemory(SessionMemory):
     def __init__(self):
         self._client = redis.Redis(
             host=REDIS_HOST,
@@ -29,7 +30,7 @@ class SimpleRedisMemory:
     def _key(self, session_id: str) -> str:
         return f"simple_history:{session_id}"
 
-    def store_turn(self, session_id: str, user_query: str, assistant_response: str) -> None:
+    def store_turn(self, session_id: str, user_query: str, assistant_response: str, summary: Optional[str] = None) -> None:
         turn = {
             "user": user_query,
             "assistant": assistant_response
@@ -51,5 +52,14 @@ class SimpleRedisMemory:
 
     def clear(self, session_id: str) -> None:
         self._client.delete(self._key(session_id))
+
+    def get_stats(self) -> dict:
+        try:
+            return {
+                "connected": bool(self._client.ping()),
+                "stored_keys": self._client.dbsize(),
+            }
+        except Exception:
+            return {"connected": False}
 
 memory_service = SimpleRedisMemory()
