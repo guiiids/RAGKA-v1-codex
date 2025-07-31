@@ -1,0 +1,427 @@
+{% extends "base.html" %}
+
+{% block title %}Feedback Insights - Agilent AI Tools{% endblock %}
+
+{% block content %}
+<!-- Header Section -->
+<div class="bg-white rounded-lg card-shadow mb-8 overflow-hidden">
+    <div class="bg-gradient-to-r from-green-500 to-agilent-success text-white px-8 py-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold mb-2">Feedback Insights</h1>
+                <p class="text-green-100">Analyze user feedback data and track performance trends</p>
+            </div>
+            <div class="text-white opacity-80">
+                <svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                </svg>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Key Metrics -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div class="bg-white rounded-lg card-shadow p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm font-medium text-gray-600">Total Responses</p>
+                <p id="total-responses" class="text-3xl font-bold text-agilent-dark">1,247</p>
+            </div>
+            <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                <svg class="w-6 h-6 text-agilent-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z"></path>
+                </svg>
+            </div>
+        </div>
+        <div class="mt-4">
+            <span class="text-sm text-agilent-success">↗ 12.5%</span>
+            <span class="text-sm text-gray-500 ml-1">vs last month</span>
+        </div>
+    </div>
+    
+    <div class="bg-white rounded-lg card-shadow p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm font-medium text-gray-600">Positive Feedback</p>
+                <p id="positive-feedback" class="text-3xl font-bold text-agilent-success">892</p>
+            </div>
+            <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                <svg class="w-6 h-6 text-agilent-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5"></path>
+                </svg>
+            </div>
+        </div>
+        <div class="mt-4">
+            <span class="text-sm text-agilent-success">↗ 8.2%</span>
+            <span class="text-sm text-gray-500 ml-1">vs last month</span>
+        </div>
+    </div>
+    
+    <div class="bg-white rounded-lg card-shadow p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm font-medium text-gray-600">Negative Feedback</p>
+                <p id="negative-feedback" class="text-3xl font-bold text-agilent-error">355</p>
+            </div>
+            <div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+                <svg class="w-6 h-6 text-agilent-error" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 13l3 3 7-7m-1.586 1.586L15 5.414 13.414 4 10 7.414 8.586 6 7 7.586l1.586 1.586L7 13z"></path>
+                </svg>
+            </div>
+        </div>
+        <div class="mt-4">
+            <span class="text-sm text-agilent-error">↘ 3.1%</span>
+            <span class="text-sm text-gray-500 ml-1">vs last month</span>
+        </div>
+    </div>
+    
+    <div class="bg-white rounded-lg card-shadow p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm font-medium text-gray-600">Satisfaction Rate</p>
+                <p id="satisfaction-rate" class="text-3xl font-bold text-agilent-blue">71.5%</p>
+            </div>
+            <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+            </div>
+        </div>
+        <div class="mt-4">
+            <span class="text-sm text-agilent-success">↗ 5.7%</span>
+            <span class="text-sm text-gray-500 ml-1">vs last month</span>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Section -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+    <!-- Feedback Trends Chart -->
+    <div class="bg-white rounded-lg card-shadow p-6">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="text-xl font-bold text-agilent-dark">Feedback Trends</h2>
+            <select id="trend-period" class="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-agilent-blue focus:border-agilent-blue">
+                <option value="7">Last 7 days</option>
+                <option value="30" selected>Last 30 days</option>
+                <option value="90">Last 90 days</option>
+            </select>
+        </div>
+        <div class="h-64">
+            <canvas id="trendsChart"></canvas>
+        </div>
+    </div>
+    
+    <!-- Feedback Distribution -->
+    <div class="bg-white rounded-lg card-shadow p-6">
+        <h2 class="text-xl font-bold text-agilent-dark mb-6">Feedback Distribution</h2>
+        <div class="h-64">
+            <canvas id="distributionChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Common Issues and Detailed Analytics -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+    <!-- Common Issues -->
+    <div class="bg-white rounded-lg card-shadow p-6">
+        <h2 class="text-xl font-bold text-agilent-dark mb-6">Common Issues</h2>
+        <div class="space-y-4" id="common-issues">
+            <!-- Issues will be populated here -->
+        </div>
+    </div>
+    
+    <!-- Recent Feedback -->
+    <div class="bg-white rounded-lg card-shadow p-6">
+        <h2 class="text-xl font-bold text-agilent-dark mb-6">Recent Feedback</h2>
+        <div class="space-y-4" id="recent-feedback">
+            <!-- Recent feedback will be populated here -->
+        </div>
+    </div>
+</div>
+
+<!-- Filters and Export -->
+<div class="bg-white rounded-lg card-shadow p-6 mb-8">
+    <h2 class="text-xl font-bold text-agilent-dark mb-6">Filters & Export</h2>
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
+            <select id="date-filter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-agilent-blue focus:border-agilent-blue">
+                <option value="today">Today</option>
+                <option value="week">This Week</option>
+                <option value="month" selected>This Month</option>
+                <option value="quarter">This Quarter</option>
+                <option value="year">This Year</option>
+            </select>
+        </div>
+        
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Feedback Type</label>
+            <select id="type-filter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-agilent-blue focus:border-agilent-blue">
+                <option value="all" selected>All Types</option>
+                <option value="positive">Positive</option>
+                <option value="negative">Negative</option>
+                <option value="neutral">Neutral</option>
+            </select>
+        </div>
+        
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Source</label>
+            <select id="source-filter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-agilent-blue focus:border-agilent-blue">
+                <option value="all" selected>All Sources</option>
+                <option value="evaluator">Prompt Evaluator</option>
+                <option value="lab">Prompt Lab</option>
+                <option value="general">General</option>
+            </select>
+        </div>
+        
+        <div class="flex items-end">
+            <button id="apply-filters" class="w-full bg-agilent-blue text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors duration-200 font-medium">
+                Apply Filters
+            </button>
+        </div>
+    </div>
+    
+    <div class="flex space-x-4">
+        <button id="export-csv" class="bg-gray-100 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-200 transition-colors duration-200 font-medium flex items-center">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            Export CSV
+        </button>
+        
+        <button id="export-pdf" class="bg-gray-100 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-200 transition-colors duration-200 font-medium flex items-center">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+            </svg>
+            Export PDF
+        </button>
+        
+        <button id="schedule-report" class="bg-agilent-success text-white py-2 px-4 rounded-md hover:bg-green-700 transition-colors duration-200 font-medium flex items-center">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            Schedule Report
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize charts and data
+    loadFeedbackData();
+    initializeCharts();
+    
+    // Event listeners
+    document.getElementById('apply-filters').addEventListener('click', applyFilters);
+    document.getElementById('export-csv').addEventListener('click', exportCSV);
+    document.getElementById('export-pdf').addEventListener('click', exportPDF);
+    document.getElementById('schedule-report').addEventListener('click', scheduleReport);
+    document.getElementById('trend-period').addEventListener('change', updateTrendsChart);
+    
+    async function loadFeedbackData() {
+        try {
+            const response = await fetch('/api/feedback-data');
+            if (!response.ok) {
+                throw new Error('Failed to load feedback data');
+            }
+            
+            const data = await response.json();
+            updateMetrics(data);
+            updateCommonIssues(data.common_issues);
+            updateRecentFeedback();
+            
+        } catch (error) {
+            console.error('Error loading feedback data:', error);
+            // Use mock data for demonstration
+            const mockData = {
+                total_responses: 1247,
+                positive_feedback: 892,
+                negative_feedback: 355,
+                satisfaction_rate: 71.5,
+                common_issues: [
+                    { issue: 'Response too generic', count: 89 },
+                    { issue: 'Missing context', count: 67 },
+                    { issue: 'Incorrect information', count: 45 },
+                    { issue: 'Too verbose', count: 34 },
+                    { issue: 'Unclear instructions', count: 28 }
+                ]
+            };
+            updateMetrics(mockData);
+            updateCommonIssues(mockData.common_issues);
+            updateRecentFeedback();
+        }
+    }
+    
+    function updateMetrics(data) {
+        document.getElementById('total-responses').textContent = data.total_responses.toLocaleString();
+        document.getElementById('positive-feedback').textContent = data.positive_feedback.toLocaleString();
+        document.getElementById('negative-feedback').textContent = data.negative_feedback.toLocaleString();
+        document.getElementById('satisfaction-rate').textContent = data.satisfaction_rate + '%';
+    }
+    
+    function updateCommonIssues(issues) {
+        const container = document.getElementById('common-issues');
+        container.innerHTML = '';
+        
+        issues.forEach((issue, index) => {
+            const percentage = ((issue.count / 355) * 100).toFixed(1);
+            const div = document.createElement('div');
+            div.className = 'flex items-center justify-between p-3 bg-gray-50 rounded-md';
+            div.innerHTML = `
+                <div class="flex items-center">
+                    <div class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center text-red-600 font-bold text-sm mr-3">
+                        ${index + 1}
+                    </div>
+                    <div>
+                        <div class="font-medium text-gray-900">${issue.issue}</div>
+                        <div class="text-sm text-gray-500">${percentage}% of negative feedback</div>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <div class="font-bold text-gray-900">${issue.count}</div>
+                    <div class="text-sm text-gray-500">reports</div>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+    }
+    
+    function updateRecentFeedback() {
+        const container = document.getElementById('recent-feedback');
+        const mockFeedback = [
+            { type: 'positive', message: 'Great prompt suggestions!', time: '2 minutes ago' },
+            { type: 'negative', message: 'Could be more specific', time: '15 minutes ago' },
+            { type: 'positive', message: 'Very helpful enhancement', time: '1 hour ago' },
+            { type: 'negative', message: 'Missing examples', time: '2 hours ago' },
+            { type: 'positive', message: 'Excellent evaluation', time: '3 hours ago' }
+        ];
+        
+        container.innerHTML = '';
+        
+        mockFeedback.forEach(feedback => {
+            const div = document.createElement('div');
+            div.className = 'flex items-start p-3 bg-gray-50 rounded-md';
+            
+            const iconColor = feedback.type === 'positive' ? 'text-green-600 bg-green-100' : 'text-red-600 bg-red-100';
+            const icon = feedback.type === 'positive' ? 
+                '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5"></path>' :
+                '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 13l3 3 7-7m-1.586 1.586L15 5.414 13.414 4 10 7.414 8.586 6 7 7.586l1.586 1.586L7 13z"></path>';
+            
+            div.innerHTML = `
+                <div class="w-8 h-8 ${iconColor} rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        ${icon}
+                    </svg>
+                </div>
+                <div class="flex-1">
+                    <div class="text-gray-900">${feedback.message}</div>
+                    <div class="text-sm text-gray-500 mt-1">${feedback.time}</div>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+    }
+    
+    function initializeCharts() {
+        // Trends Chart
+        const trendsCtx = document.getElementById('trendsChart').getContext('2d');
+        window.trendsChart = new Chart(trendsCtx, {
+            type: 'line',
+            data: {
+                labels: ['Jun 1', 'Jun 2', 'Jun 3', 'Jun 4', 'Jun 5', 'Jun 6'],
+                datasets: [{
+                    label: 'Positive',
+                    data: [45, 52, 38, 41, 48, 44],
+                    borderColor: '#28A745',
+                    backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                    tension: 0.4
+                }, {
+                    label: 'Negative',
+                    data: [12, 8, 15, 11, 9, 13],
+                    borderColor: '#DC3545',
+                    backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+        
+        // Distribution Chart
+        const distributionCtx = document.getElementById('distributionChart').getContext('2d');
+        window.distributionChart = new Chart(distributionCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Positive', 'Negative', 'Neutral'],
+                datasets: [{
+                    data: [892, 355, 0],
+                    backgroundColor: ['#28A745', '#DC3545', '#6C757D'],
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                    }
+                }
+            }
+        });
+    }
+    
+    function updateTrendsChart() {
+        // Mock function to update trends chart based on period
+        console.log('Updating trends chart for period:', document.getElementById('trend-period').value);
+    }
+    
+    function applyFilters() {
+        const dateFilter = document.getElementById('date-filter').value;
+        const typeFilter = document.getElementById('type-filter').value;
+        const sourceFilter = document.getElementById('source-filter').value;
+        
+        console.log('Applying filters:', { dateFilter, typeFilter, sourceFilter });
+        // Mock filter application
+        alert('Filters applied successfully!');
+    }
+    
+    function exportCSV() {
+        // Mock CSV export
+        const csvContent = "data:text/csv;charset=utf-8,Date,Type,Message,Source\n2025-06-06,Positive,Great prompt suggestions!,Evaluator\n2025-06-06,Negative,Could be more specific,Lab";
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "feedback_data.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+    
+    function exportPDF() {
+        alert('PDF export functionality would be implemented here.');
+    }
+    
+    function scheduleReport() {
+        alert('Report scheduling functionality would be implemented here.');
+    }
+});
+</script>
+{% endblock %}
+

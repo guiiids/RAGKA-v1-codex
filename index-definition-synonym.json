@@ -1,0 +1,110 @@
+{
+  "name": "vector-1751292361997-pool10-synonym",
+  "fields": [
+    {
+      "name": "chunk_id",
+      "type": "Edm.String",
+      "searchable": true,
+      "filterable": false,
+      "retrievable": true,
+      "stored": true,
+      "sortable": true,
+      "facetable": false,
+      "key": true,
+      "analyzer": "keyword"
+    },
+    {
+      "name": "parent_id",
+      "type": "Edm.String",
+      "searchable": false,
+      "filterable": true,
+      "retrievable": true,
+      "stored": true,
+      "sortable": false,
+      "facetable": false
+    },
+    {
+      "name": "chunk",
+      "type": "Edm.String",
+      "searchable": true,
+      "filterable": false,
+      "retrievable": true,
+      "stored": true,
+      "sortable": false,
+      "facetable": false,
+      "synonymMaps": [
+        "synonyms-community"
+      ]
+    },
+    {
+      "name": "title",
+      "type": "Edm.String",
+      "searchable": true,
+      "filterable": false,
+      "retrievable": true,
+      "stored": true,
+      "sortable": false,
+      "facetable": false
+    },
+    {
+      "name": "text_vector",
+      "type": "Collection(Edm.Single)",
+      "searchable": true,
+      "retrievable": true,
+      "stored": true,
+      "dimensions": 1536,
+      "vectorSearchProfile": "vector-1751292361997-pool10-azureOpenAi-text-profile"
+    }
+  ],
+  "similarity": {
+    "@odata.type": "#Microsoft.Azure.Search.BM25Similarity"
+  },
+  "semantic": {
+    "defaultConfiguration": "vector-1751292361997-pool10-semantic-configuration",
+    "configurations": [
+      {
+        "name": "vector-1751292361997-pool10-semantic-configuration",
+        "flightingOptIn": false,
+        "rankingOrder": "BoostedRerankerScore",
+        "prioritizedFields": {
+          "titleField": { "fieldName": "title" },
+          "prioritizedContentFields": [{ "fieldName": "chunk" }],
+          "prioritizedKeywordsFields": []
+        }
+      }
+    ]
+  },
+  "vectorSearch": {
+    "algorithms": [
+      {
+        "name": "vector-1751292361997-pool10-algorithm",
+        "kind": "hnsw",
+        "hnswParameters": {
+          "metric": "cosine",
+          "m": 4,
+          "efConstruction": 400,
+          "efSearch": 500
+        }
+      }
+    ],
+    "profiles": [
+      {
+        "name": "vector-1751292361997-pool10-azureOpenAi-text-profile",
+        "algorithm": "vector-1751292361997-pool10-algorithm",
+        "vectorizer": "vector-1751292361997-pool10-azureOpenAi-text-vectorizer"
+      }
+    ],
+    "vectorizers": [
+      {
+        "name": "vector-1751292361997-pool10-azureOpenAi-text-vectorizer",
+        "kind": "azureOpenAI",
+        "azureOpenAIParameters": {
+          "resourceUri": "https://support01.openai.azure.com",
+          "deploymentId": "text-embedding-3-small",
+          "apiKey": "<YOUR_KEY>",
+          "modelName": "text-embedding-3-small"
+        }
+      }
+    ]
+  }
+}

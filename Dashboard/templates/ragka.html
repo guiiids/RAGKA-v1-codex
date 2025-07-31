@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAGKA Analytics Dashboard</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- jQuery (required for daterangepicker) -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- ApexCharts for advanced visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <!-- Date Range Picker -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .dashboard-card {
+            transition: all 0.3s ease;
+        }
+        .dashboard-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+        .data-table {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex">
+                    <div class="flex-shrink-0 flex items-center">
+                        <img class="h-6 w-auto" src="/static/images/logo.png" alt="RAGKA Logo">
+                        <span class="ml-2 text-2xl font-bold text-gray-800">RAGKA Analytics</span>
+                    </div>
+                </div>
+                <div class="flex items-center">
+                    <div class="relative">
+                        <button id="date-range-btn" class="flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none">
+                            <i class="fas fa-calendar-alt mr-2"></i>
+                            <span id="date-range-text">Last 7 days</span>
+                            <i class="fas fa-chevron-down ml-2"></i>
+                        </button>
+                    </div>
+                    <button class="ml-4 px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none">
+                        <i class="fas fa-download mr-2"></i>
+                        Export Data
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Overview Section -->
+        <div class="mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Overview</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                <!-- Total Interactions Card -->
+                <div class="dashboard-card bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full text-blue-600">
+                            <i class="fas fa-comments text-3xl text-gray-600"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-500">Total Interactions</p>
+                            <p class="text-2xl font-semibold text-gray-800" id="total-interactions">1,248</p>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <div class="flex items-center">
+                            <span class="text-green-500 text-sm font-medium flex items-center">
+                                <i class="fas fa-arrow-up mr-1"></i>
+                                12.5%
+                            </span>
+                            <span class="text-gray-500 text-sm ml-2">vs last period</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Positive Feedback Card -->
+                <div class="dashboard-card bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full text-green-600">
+                            <i class="fas fa-thumbs-up text-3xl text-gray-600"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-500">Positive Feedback</p>
+                            <p class="text-2xl font-semibold text-gray-800" id="positive-feedback">78%</p>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <div class="flex items-center">
+                            <span class="text-green-500 text-sm font-medium flex items-center">
+                                <i class="fas fa-arrow-up mr-1"></i>
+                                3.2%
+                            </span>
+                            <span class="text-gray-500 text-sm ml-2">vs last period</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Average Response Time Card -->
+                <div class="dashboard-card bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full text-purple-600">
+                            <i class="fas fa-clock text-3xl text-gray-600"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-500">Avg Response Time</p>
+                            <p class="text-2xl font-semibold text-gray-800" id="avg-response-time">2.4s</p>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <div class="flex items-center">
+                            <span class="text-green-500 text-sm font-medium flex items-center">
+                                <i class="fas fa-arrow-down mr-1"></i>
+                                0.3s
+                            </span>
+                            <span class="text-gray-500 text-sm ml-2">vs last period</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Token Usage Card -->
+                <div class="dashboard-card bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full text-yellow-600">
+                            <i class="fas fa-bolt text-3xl text-gray-600"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-500">Token Usage</p>
+                            <p class="text-2xl font-semibold text-gray-800" id="token-usage">1.2M</p>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <div class="flex items-center">
+                            <span class="text-red-500 text-sm font-medium flex items-center">
+                                <i class="fas fa-arrow-up mr-1"></i>
+                                8.1%
+                            </span>
+                            <span class="text-gray-500 text-sm ml-2">vs last period</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <!-- Interactions Over Time Chart -->
+            <div class="dashboard-card bg-white rounded-lg shadow p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Interactions Over Time</h3>
+                <div class="chart-container">
+                    <canvas id="interactions-chart"></canvas>
+                </div>
+            </div>
+
+            <!-- Feedback Distribution Chart -->
+            <div class="dashboard-card bg-white rounded-lg shadow p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Feedback Distribution</h3>
+                <div class="chart-container">
+                    <canvas id="feedback-chart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- More Charts Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+            <!-- Top Query Categories -->
+            <div class="dashboard-card bg-white rounded-lg shadow p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Top Query Categories</h3>
+                <div class="chart-container" style="height: 250px;">
+                    <canvas id="categories-chart"></canvas>
+                </div>
+            </div>
+
+            <!-- Response Time Distribution -->
+            <div class="dashboard-card bg-white rounded-lg shadow p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Response Time Distribution</h3>
+                <div class="chart-container" style="height: 250px;">
+                    <canvas id="response-time-chart"></canvas>
+                </div>
+            </div>
+
+            <!-- Token Usage by Day -->
+            <div class="dashboard-card bg-white rounded-lg shadow p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Token Usage by Day</h3>
+                <div class="chart-container" style="height: 250px;">
+                    <canvas id="token-usage-chart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Interactions Table -->
+        <div class="dashboard-card bg-white rounded-lg shadow mb-8">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-800">Recent Interactions</h3>
+            </div>
+            <div class="data-table">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Query</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Feedback</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Response Time</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tokens</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200" id="recent-interactions-table">
+                        <!-- Table rows will be populated dynamically -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+                <div class="flex items-center">
+                    <span class="text-sm text-gray-700">
+                        Showing <span class="font-medium">1</span> to <span class="font-medium">10</span> of <span class="font-medium">97</span> results
+                    </span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                        Previous
+                    </button>
+                    <button class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                        Next
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Feedback Analysis Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <!-- Feedback Tags Distribution -->
+            <div class="dashboard-card bg-white rounded-lg shadow p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Feedback Tags Distribution</h3>
+                <div class="chart-container">
+                    <canvas id="feedback-tags-chart"></canvas>
+                </div>
+            </div>
+
+            <!-- Common Issues Word Cloud -->
+            <div class="dashboard-card bg-white rounded-lg shadow p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Common Issues</h3>
+                <div id="issues-word-cloud" style="height: 300px;"></div>
+            </div>
+        </div>
+
+        <!-- Model Performance Section -->
+        <div class="dashboard-card bg-white rounded-lg shadow p-6 mb-8">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Model Performance Metrics</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- Accuracy Card -->
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <div class="flex items-center justify-between">
+                        <p class="text-sm font-medium text-gray-500">Accuracy</p>
+                        <div class="p-2 rounded-full bg-blue-100 text-blue-600">
+                            <i class="fas fa-bullseye text-sm"></i>
+                        </div>
+                    </div>
+                    <p class="text-2xl font-semibold text-gray-800 mt-2">92.7%</p>
+                    <div class="mt-2">
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div class="bg-blue-600 h-2 rounded-full" style="width: 92.7%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Relevance Card -->
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <div class="flex items-center justify-between">
+                        <p class="text-sm font-medium text-gray-500">Relevance</p>
+                        <div class="p-2 rounded-full bg-green-100 text-green-600">
+                            <i class="fas fa-check-circle text-sm"></i>
+                        </div>
+                    </div>
+                    <p class="text-2xl font-semibold text-gray-800 mt-2">88.3%</p>
+                    <div class="mt-2">
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div class="bg-green-600 h-2 rounded-full" style="width: 88.3%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Coherence Card -->
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <div class="flex items-center justify-between">
+                        <p class="text-sm font-medium text-gray-500">Coherence</p>
+                        <div class="p-2 rounded-full bg-purple-100 text-purple-600">
+                            <i class="fas fa-link text-sm"></i>
+                        </div>
+                    </div>
+                    <p class="text-2xl font-semibold text-gray-800 mt-2">94.1%</p>
+                    <div class="mt-2">
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div class="bg-purple-600 h-2 rounded-full" style="width: 94.1%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Hallucination Rate Card -->
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <div class="flex items-center justify-between">
+                        <p class="text-sm font-medium text-gray-500">Hallucination Rate</p>
+                        <div class="p-2 rounded-full bg-red-100 text-red-600">
+                            <i class="fas fa-exclamation-triangle text-sm"></i>
+                        </div>
+                    </div>
+                    <p class="text-2xl font-semibold text-gray-800 mt-2">3.2%</p>
+                    <div class="mt-2">
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div class="bg-red-600 h-2 rounded-full" style="width: 3.2%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-gray-200 py-6">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-500">© 2025 RAGKA Analytics Dashboard. All rights reserved.</p>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-500">Last updated: <span id="last-updated">June 18, 2025 5:03 PM</span></p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript for Charts and Data -->
+    <script>
+        // Sample data - would be replaced with actual data from your database
+        const sampleData = {
+            interactions: [120, 150, 180, 210, 190, 220, 178],
+            feedback: {
+                positive: 78,
+                negative: 22
+            },
+            categories: {
+                'Product Info': 35,
+                'Troubleshooting': 25,
+                'Feature Requests': 15,
+                'Technical Support': 20,
+                'Other': 5
+            },
+            responseTimes: [1.2, 1.8, 2.1, 2.4, 2.7, 3.0, 3.5],
+            tokenUsage: [45000, 52000, 48000, 51000, 49000, 53000, 50000],
+            feedbackTags: {
+                'Looks Good / Accurate & Clear': 65,
+                'Incomplete': 12,
+                'Factual Error': 8,
+                'Irrelevant': 7,
+                'Too Verbose': 5,
+                'Other': 3
+            }
+        };
+
+        // Initialize charts when the DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Interactions Over Time Chart
+            const interactionsCtx = document.getElementById('interactions-chart').getContext('2d');
+            new Chart(interactionsCtx, {
+                type: 'line',
+                data: {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    datasets: [{
+                        label: 'Interactions',
+                        data: sampleData.interactions,
+                        backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                        borderColor: 'rgba(79, 70, 229, 1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                drawBorder: false
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Feedback Distribution Chart
+            const feedbackCtx = document.getElementById('feedback-chart').getContext('2d');
+            new Chart(feedbackCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Positive', 'Negative'],
+                    datasets: [{
+                        data: [sampleData.feedback.positive, sampleData.feedback.negative],
+                        backgroundColor: [
+                            'rgba(34, 197, 94, 0.8)',
+                            'rgba(239, 68, 68, 0.8)'
+                        ],
+                        borderColor: [
+                            'rgba(34, 197, 94, 1)',
+                            'rgba(239, 68, 68, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    },
+                    cutout: '70%'
+                }
+            });
+
+            // Top Query Categories Chart
+            const categoriesCtx = document.getElementById('categories-chart').getContext('2d');
+            new Chart(categoriesCtx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(sampleData.categories),
+                    datasets: [{
+                        label: 'Queries',
+                        data: Object.values(sampleData.categories),
+                        backgroundColor: [
+                            'rgba(79, 70, 229, 0.8)',
+                            'rgba(16, 185, 129, 0.8)',
+                            'rgba(245, 158, 11, 0.8)',
+                            'rgba(236, 72, 153, 0.8)',
+                            'rgba(107, 114, 128, 0.8)'
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                drawBorder: false
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Response Time Distribution Chart
+            const responseTimeCtx = document.getElementById('response-time-chart').getContext('2d');
+            new Chart(responseTimeCtx, {
+                type: 'line',
+                data: {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    datasets: [{
+                        label: 'Response Time (s)',
+                        data: sampleData.responseTimes,
+                        backgroundColor: 'rgba(168, 85, 247, 0.1)',
+                        borderColor: 'rgba(168, 85, 247, 1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true,
+                        pointBackgroundColor: 'rgba(168, 85, 247, 1)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                drawBorder: false
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Token Usage by Day Chart
+            const tokenUsageCtx = document.getElementById('token-usage-chart').getContext('2d');
+            new Chart(tokenUsageCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    datasets: [{
+                        label: 'Token Usage',
+                        data: sampleData.tokenUsage,
+                        backgroundColor: 'rgba(234, 179, 8, 0.8)',
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                drawBorder: false
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Feedback Tags Distribution Chart
+            const feedbackTagsCtx = document.getElementById('feedback-tags-chart').getContext('2d');
+            new Chart(feedbackTagsCtx, {
+                type: 'pie',
+                data: {
+                    labels: Object.keys(sampleData.feedbackTags),
+                    datasets: [{
+                        data: Object.values(sampleData.feedbackTags),
+                        backgroundColor: [
+                            'rgba(34, 197, 94, 0.8)',
+                            'rgba(239, 68, 68, 0.8)',
+                            'rgba(245, 158, 11, 0.8)',
+                            'rgba(79, 70, 229, 0.8)',
+                            'rgba(168, 85, 247, 0.8)',
+                            'rgba(107, 114, 128, 0.8)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right'
+                        }
+                    }
+                }
+            });
+
+            // Populate Recent Interactions Table
+            populateRecentInteractions();
+
+            // Initialize Date Range Picker
+            initDateRangePicker();
+        });
+
+        // Function to populate recent interactions table
+        function populateRecentInteractions() {
+            const tableBody = document.getElementById('recent-interactions-table');
+            
+            // Sample data for the table
+            const interactions = [
+                { id: 1001, query: "How do I reset my password?", feedback: "Positive", responseTime: "1.8s", tokens: 320, timestamp: "2025-06-18 16:45:23" },
+                { id: 1002, query: "What are the system requirements?", feedback: "Positive", responseTime: "2.1s", tokens: 412, timestamp: "2025-06-18 15:32:17" },
+                { id: 1003, query: "Can I integrate with third-party APIs?", feedback: "Negative", responseTime: "2.5s", tokens: 528, timestamp: "2025-06-18 14:21:05" },
+                { id: 1004, query: "How to export data in CSV format?", feedback: "Positive", responseTime: "1.9s", tokens: 375, timestamp: "2025-06-18 13:15:42" },
+                { id: 1005, query: "What's the difference between plans?", feedback: "Positive", responseTime: "2.3s", tokens: 490, timestamp: "2025-06-18 12:08:31" },
+                { id: 1006, query: "How to set up two-factor authentication?", feedback: "Negative", responseTime: "2.7s", tokens: 615, timestamp: "2025-06-18 11:02:19" },
+                { id: 1007, query: "Is there a mobile app available?", feedback: "Positive", responseTime: "1.6s", tokens: 280, timestamp: "2025-06-18 10:45:07" },
+                { id: 1008, query: "How to customize dashboard widgets?", feedback: "Positive", responseTime: "2.2s", tokens: 450, timestamp: "2025-06-18 09:38:54" },
+                { id: 1009, query: "Can I schedule automated reports?", feedback: "Negative", responseTime: "2.4s", tokens: 520, timestamp: "2025-06-18 08:27:42" },
+                { id: 1010, query: "How to invite team members?", feedback: "Positive", responseTime: "1.7s", tokens: 310, timestamp: "2025-06-18 07:15:30" }
+            ];
+
+            // Clear existing rows
+            tableBody.innerHTML = '';
+            
+            // Add new rows
+            interactions.forEach(interaction => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50';
+                
+                // Create badge for feedback
+                const feedbackBadge = interaction.feedback === 'Positive' 
+                    ? '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Positive</span>'
+                    : '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Negative</span>';
+                
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${interaction.id}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${interaction.query}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${feedbackBadge}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${interaction.responseTime}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${interaction.tokens}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${interaction.timestamp}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <button class="px-3 py-1 border border-gray-300 rounded-md text-xs font-medium text-gray-700 bg-white hover:bg-gray-50">
+                            View
+                        </button>
+                    </td>
+                `;
+                
+                tableBody.appendChild(row);
+            });
+        }
+
+        // Function to initialize date range picker
+        function initDateRangePicker() {
+            const dateRangeBtn = document.getElementById('date-range-btn');
+            const dateRangeText = document.getElementById('date-range-text');
+            
+            if (!dateRangeBtn) return;
+            
+            // Initialize with daterangepicker library
+            $(dateRangeBtn).daterangepicker({
+                ranges: {
+                    'Today': [moment(), moment()],
+                    'Yesterday': [moment().subtract(1, 'days'), moment().subtract(1, 'days')],
+                    'Last 7 Days': [moment().subtract(6, 'days'), moment()],
+                    'Last 30 Days': [moment().subtract(29, 'days'), moment()],
+                    'This Month': [moment().startOf('month'), moment().endOf('month')],
+                    'Last Month': [moment().subtract(1, 'month').startOf('month'), moment().subtract(1, 'month').endOf('month')]
+                },
+                startDate: moment().subtract(6, 'days'),
+                endDate: moment(),
+                opens: 'left',
+                alwaysShowCalendars: true
+            }, function(start, end, label) {
+                // Update the button text with the selected range
+                dateRangeText.textContent = label;
+                
+                // Here you would typically fetch new data based on the date range
+                console.log('Date range selected:', start.format('YYYY-MM-DD'), 'to', end.format('YYYY-MM-DD'));
+                
+                // For demo purposes, we'll just update the last updated text
+                document.getElementById('last-updated').textContent = moment().format('MMMM D, YYYY h:mm A');
+            });
+            
+            // Initialize with default range
+            dateRangeText.textContent = 'Last 7 Days';
+        }
+
+        // Initialize word cloud (placeholder)
+        document.addEventListener('DOMContentLoaded', function() {
+            const wordCloudElement = document.getElementById('issues-word-cloud');
+            if (wordCloudElement) {
+                // This would typically use a word cloud library like d3-cloud
+                // For now, we'll just add a placeholder message
+                wordCloudElement.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500">Word cloud visualization would appear here</div>';
+            }
+        });
+    </script>
+</body></html>
