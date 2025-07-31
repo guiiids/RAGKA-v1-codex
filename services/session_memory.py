@@ -135,4 +135,3 @@ try:
     from services.simple_redis_memory import SimpleRedisMemory as RedisSessionMemory
 except Exception:  # pragma: no cover
     RedisSessionMemory = None
-
