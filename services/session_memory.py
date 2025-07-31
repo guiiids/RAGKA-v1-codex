@@ -32,6 +32,7 @@ class PostgresSessionMemory(SessionMemory):
     def __init__(self, max_turns: int = 10):
         self.max_turns = max_turns
         self._ensure_table()
+        logger.debug("PostgresSessionMemory initialized with max_turns=%s", max_turns)
 
     def _ensure_table(self) -> None:
         query = (
@@ -57,6 +58,7 @@ class PostgresSessionMemory(SessionMemory):
             conn.close()
 
     def store_turn(self, session_id: str, user_msg: str, bot_msg: str, summary: Optional[str] = None) -> None:
+        logger.debug("Storing turn for session %s", session_id)
         conn = DatabaseManager.get_connection()
         try:
             with conn.cursor() as cur:
@@ -73,6 +75,7 @@ class PostgresSessionMemory(SessionMemory):
                     (session_id, session_id, self.max_turns),
                 )
                 conn.commit()
+                logger.debug("Stored turn and trimmed history for session %s", session_id)
         except Exception:
             logger.exception("Failed storing conversation turn")
             conn.rollback()
@@ -80,6 +83,7 @@ class PostgresSessionMemory(SessionMemory):
             conn.close()
 
     def get_history(self, session_id: str, last_n_turns: int = 10) -> List[Tuple[str, str]]:
+        logger.debug("Fetching last %s turns for session %s", last_n_turns, session_id)
         conn = DatabaseManager.get_connection()
         try:
             with conn.cursor() as cur:
@@ -90,6 +94,7 @@ class PostgresSessionMemory(SessionMemory):
                 )
                 rows = cur.fetchall()
             rows.reverse()
+            logger.debug("Fetched %s turns for session %s", len(rows), session_id)
             return [(r[0], r[1]) for r in rows]
         except Exception:
             logger.exception("Failed retrieving conversation history")
@@ -98,11 +103,13 @@ class PostgresSessionMemory(SessionMemory):
             conn.close()
 
     def clear(self, session_id: str) -> None:
+        logger.debug("Clearing history for session %s", session_id)
         conn = DatabaseManager.get_connection()
         try:
             with conn.cursor() as cur:
                 cur.execute("DELETE FROM session_memory WHERE session_id = %s", (session_id,))
                 conn.commit()
+                logger.debug("Cleared history for session %s", session_id)
         except Exception:
             logger.exception("Failed clearing session history")
             conn.rollback()
@@ -128,4 +135,3 @@ try:
     from services.simple_redis_memory import SimpleRedisMemory as RedisSessionMemory
 except Exception:  # pragma: no cover
     RedisSessionMemory = None
-

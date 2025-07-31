@@ -153,13 +153,17 @@ class OpenAIService:
             raise
 
     def summarize_text(self, text: str, max_tokens: int = 60) -> str:
-        """Return a short summary for storage in session memory."""
-        messages = [
-            {"role": "system", "content": "Summarize the following text in 40 words or less."},
-            {"role": "user", "content": text},
-        ]
-        try:
-            return self.get_chat_response(messages, max_tokens=max_tokens)
-        except Exception:
-            logger.exception("OpenAI summary generation failed")
-            return ""
+    """Return a short summary for storage in session memory."""
+    logger.debug("Generating summary (%s tokens max)", max_tokens)
+    messages = [
+        {"role": "system", "content": "Summarize the following text in 40 words or less."},
+        {"role": "user", "content": text},
+    ]
+    try:
+        summary = self.get_chat_response(messages, max_tokens=max_tokens)
+        logger.debug("Summary generated (%s chars)", len(summary))
+        return summary
+    except Exception:
+        logger.exception("OpenAI summary generation failed")
+        return ""
+
