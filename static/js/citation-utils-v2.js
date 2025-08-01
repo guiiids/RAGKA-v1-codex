@@ -112,34 +112,37 @@
         storeCitations(sessionId, messageId, sources);
       }
 
-      // Process citations in the text - convert to simple [1], [2], [3] format
-      let citationCounter = 1;
-      const citationMap = new Map();
-      
+      // Create mapping from markers to source objects
+      const sourceMap = new Map();
+      sources.forEach(src => {
+        if (src.display_id !== undefined) {
+          sourceMap.set(String(src.display_id), src);
+        }
+        if (src.id) {
+          sourceMap.set(String(src.id), src);
+        }
+      });
+
       let processedText = text.replace(
         /\[([^\]]+)\]/g,
         function(match, citationContent) {
-          // Handle existing numeric citations [1], [2], etc.
+          let sourceObj = null;
+
+          // Direct numeric match on display_id
           if (/^\d+$/.test(citationContent)) {
-            const num = parseInt(citationContent);
-            return `<sup><a href="#source-${messageId}-${num}" class="citation-link text-blue-600 hover:text-blue-800" data-message-id="${messageId}" data-index="${num}">[${num}]</a></sup>`;
+            sourceObj = sources.find(s => String(s.display_id) === citationContent);
           }
-          
-          // Handle internal source IDs [S_xxxxx] - convert to simple numbers
-          if (citationContent.startsWith('S_')) {
-            if (!citationMap.has(citationContent)) {
-              citationMap.set(citationContent, citationCounter++);
-            }
-            const displayNum = citationMap.get(citationContent);
-            return `<sup><a href="#source-${messageId}-${displayNum}" class="citation-link text-blue-600 hover:text-blue-800" data-message-id="${messageId}" data-index="${displayNum}">[${displayNum}]</a></sup>`;
+
+          // Lookup in source map
+          if (!sourceObj && sourceMap.has(citationContent)) {
+            sourceObj = sourceMap.get(citationContent);
           }
-          
-          // For any other format, convert to sequential number
-          if (!citationMap.has(citationContent)) {
-            citationMap.set(citationContent, citationCounter++);
+
+          if (sourceObj && sourceObj.id) {
+            return `<sup><a href="#source-${sourceObj.id}" class="citation-link text-blue-600 hover:text-blue-800" data-source-id="${sourceObj.id}">[${sourceObj.display_id}]</a></sup>`;
           }
-          const displayNum = citationMap.get(citationContent);
-          return `<sup><a href="#source-${messageId}-${displayNum}" class="citation-link text-blue-600 hover:text-blue-800" data-message-id="${messageId}" data-index="${displayNum}">[${displayNum}]</a></sup>`;
+
+          return match;
         }
       );
 
@@ -175,16 +178,16 @@
    * @param {string} messageId - Message identifier
    * @returns {string} - HTML string for sources section
    */
-  function addSourcesUtilizedSection(sources, messageId) {
+  function addSourcesUtilizedSection(sources) {
     if (!sources || !Array.isArray(sources) || sources.length === 0) {
       return '';
     }
 
-    let sourcesHtml = `<div class="sources-section mt-4"><strong>Sources:</strong><div class="sources-container mt-2" data-message-id="${messageId}">`;
-    
-    sources.forEach((source, index) => {
-      const displayNum = index + 1;
-      const sourceId = `source-${messageId}-${displayNum}`;
+    let sourcesHtml = `<div class="sources-section mt-4"><strong>Sources:</strong><div class="sources-container mt-2">`;
+
+    sources.forEach(source => {
+      const displayNum = source.display_id || '';
+      const sourceId = `source-${source.id || displayNum}`;
       
       // Extract source information
       let title = '';
@@ -211,18 +214,18 @@
         content.substring(0, 200) + '...' : 
         content;
 
-      // Build source HTML with message-scoped ID
+      // Build source HTML with unique source ID
       sourcesHtml += `
-        <div id="${sourceId}" class="source-item mb-3 p-3 bg-gray-50 rounded border-l-4 border-blue-200">
+        <div id="${sourceId}" class="source-item mb-3 p-3 bg-gray-50 rounded border-l-4 border-blue-200" data-source-id="${source.id || displayNum}">
           <div class="source-header mb-2">
-            <strong class="text-blue-700">[${displayNum}]</strong> 
+            <strong class="text-blue-700">[${displayNum}]</strong>
             <strong class="text-gray-800">${title}</strong>
           </div>
           <div class="source-content text-gray-600 text-sm">
             <div class="source-preview">${truncatedContent}</div>
-            ${isLongContent ? 
+            ${isLongContent ?
               `<div class="source-full hidden">${content}</div>
-               <button class="toggle-source-btn text-blue-600 text-xs mt-2 hover:underline focus:outline-none" data-message-id="${messageId}" data-index="${displayNum}">Show more</button>` 
+               <button class="toggle-source-btn text-blue-600 text-xs mt-2 hover:underline focus:outline-none" data-source-id="${source.id || displayNum}">Show more</button>`
               : ''}
           </div>
         </div>
@@ -244,17 +247,16 @@
     const link = e.target.closest('.citation-link');
     if (!link) return;
 
-    const messageId = link.getAttribute('data-message-id');
-    const index = link.getAttribute('data-index');
-    const targetId = `source-${messageId}-${index}`;
-    
-    console.log(`Citation clicked: [${index}] for message ${messageId}`);
+    const sourceId = link.getAttribute('data-source-id');
+    const targetId = `source-${sourceId}`;
+
+    console.log(`Citation clicked: ${sourceId}`);
 
     // Find and scroll to the target source
     const targetElement = document.getElementById(targetId);
     if (targetElement) {
       targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      
+
       // Highlight the target temporarily
       targetElement.classList.add('bg-yellow-200', 'border-yellow-400');
       setTimeout(() => {
@@ -274,7 +276,8 @@
     e.stopPropagation();
 
     const btn = e.target;
-    const sourceItem = btn.closest('.source-item');
+    const sourceId = btn.getAttribute('data-source-id');
+    const sourceItem = document.getElementById(`source-${sourceId}`);
     if (!sourceItem) return;
 
     const preview = sourceItem.querySelector('.source-preview');
