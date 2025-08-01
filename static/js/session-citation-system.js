@@ -48,7 +48,7 @@
   /**
    * Register sources with the session-wide citation registry
    * @param {Array} sources - Array of source objects
-   * @returns {Promise<Array>} - Array of sources with assigned citation IDs
+   * @returns {Promise<Array>} - Array of sources with assigned IDs
    */
   async function registerSources(sources) {
     if (!sources || !Array.isArray(sources) || sources.length === 0) {
@@ -70,20 +70,20 @@
       const result = await response.json();
       
       if (result.success && result.sources) {
-        // Update local cache
+        // Update local cache keyed by unique source.id
         result.sources.forEach(source => {
-          if (source.citation_id) {
-            citationCache.set(source.citation_id, source);
+          if (source.id) {
+            citationCache.set(source.id, source);
           }
         });
-        
+
         if (debugMode) {
           console.log('📚 Registered sources:', result.sources.map(s => ({
-            id: s.citation_id,
-            title: s.title.substring(0, 30) + '...'
+            id: s.id,
+            title: (s.title || '').substring(0, 30) + '...'
           })));
         }
-        
+
         return result.sources;
       } else {
         console.warn('Failed to register sources:', result.error);
@@ -97,33 +97,33 @@
   }
 
   /**
-   * Get source data by citation ID
-   * @param {number} citationId - Citation ID to look up
+   * Get source data by unique source ID
+   * @param {string|number} sourceId - Source ID to look up
    * @returns {Promise<Object|null>} - Source data or null if not found
    */
-  async function getSourceByCitationId(citationId) {
+  async function getSourceById(sourceId) {
     // Check local cache first
-    if (citationCache.has(citationId)) {
-      return citationCache.get(citationId);
+    if (citationCache.has(sourceId)) {
+      return citationCache.get(sourceId);
     }
 
     try {
-      const response = await fetch(`/api/session-citations/get?session_id=${sessionId}&citation_id=${citationId}`);
+      const response = await fetch(`/api/session-citations/get?session_id=${sessionId}&source_id=${sourceId}`);
       const result = await response.json();
-      
+
       if (result.success && result.source) {
         // Cache the result
-        citationCache.set(citationId, result.source);
+        citationCache.set(sourceId, result.source);
         return result.source;
       } else {
         if (debugMode) {
-          console.warn(`Source not found for citation ID ${citationId}:`, result.error);
+          console.warn(`Source not found for ID ${sourceId}:`, result.error);
         }
         return null;
       }
-      
+
     } catch (error) {
-      console.error('Error getting source by citation ID:', error);
+      console.error('Error getting source by ID:', error);
       return null;
     }
   }
@@ -155,30 +155,23 @@
         originalText: text.substring(0, 100) + '...',
         sourcesCount: sources.length,
         registeredCount: registeredSources.length,
-        citationIds: registeredSources.map(s => s.citation_id)
+        citationIds: registeredSources.map(s => s.id)
       });
     }
     
-    // Create a mapping of various citation formats to registered citation IDs
-    const citationMap = new Map();
-    
-    // For this message, create sequential numbering starting from 1
+    // Map various citation markers to their corresponding source objects
     const messageScope = new Map();
-    registeredSources.forEach((source, index) => {
-      const messageScopedId = index + 1; // Sequential numbering: 1, 2, 3, etc.
-      const citationId = source.citation_id;
-      
-      // Map the original citation markers to message-scoped sequential IDs
-      messageScope.set(String(source.display_id || (index + 1)), messageScopedId);
-      messageScope.set(source.id || '', messageScopedId);
-      messageScope.set(`source_${index + 1}`, messageScopedId);
-      
-      // Store the mapping back to the actual citation ID for lookups
-      citationMap.set(messageScopedId, citationId);
-      
-      // Handle legacy S_ format
-      if (source.id && source.id.startsWith('S_')) {
-        messageScope.set(source.id, messageScopedId);
+    registeredSources.forEach(source => {
+      const displayId = source.display_id || '';
+      if (displayId !== '') {
+        messageScope.set(String(displayId), source);
+      }
+      if (source.id) {
+        messageScope.set(String(source.id), source);
+        // Handle legacy S_ format
+        if (source.id.startsWith('S_')) {
+          messageScope.set(source.id, source);
+        }
       }
     });
 
@@ -186,28 +179,21 @@
     let processedText = text.replace(
       /\[([^\]]+)\]/g,
       function(match, citationContent) {
-        // Try to find the corresponding message-scoped ID
-        let messageScopedId = null;
-        let actualCitationId = null;
-        
-        // Direct numeric match - map to sequential numbering
+        let sourceObj = null;
+
+        // Direct numeric match - map using display_id
         if (/^\d+$/.test(citationContent)) {
-          const sourceIndex = parseInt(citationContent) - 1;
-          if (sourceIndex >= 0 && sourceIndex < registeredSources.length) {
-            messageScopedId = sourceIndex + 1;
-            actualCitationId = registeredSources[sourceIndex].citation_id;
-          }
+          sourceObj = registeredSources.find(s => String(s.display_id) === citationContent);
         }
-        
+
         // Lookup in message scope mapping
-        if (!messageScopedId && messageScope.has(citationContent)) {
-          messageScopedId = messageScope.get(citationContent);
-          actualCitationId = citationMap.get(messageScopedId);
+        if (!sourceObj && messageScope.has(citationContent)) {
+          sourceObj = messageScope.get(citationContent);
         }
-        
-        // If we found valid IDs, create the link using the actual citation ID for data but display the sequential number
-        if (messageScopedId && actualCitationId) {
-          return `<sup><a href="javascript:void(0);" class="session-citation-link text-blue-600 hover:text-blue-800" data-citation-id="${actualCitationId}" onclick="handleSessionCitationClick(${actualCitationId})">[${messageScopedId}]</a></sup>`;
+
+        // If we found a valid source, create the link using source.id and display_id
+        if (sourceObj && sourceObj.id) {
+          return `<sup><a href="#source-${sourceObj.id}" class="session-citation-link text-blue-600 hover:text-blue-800" data-source-id="${sourceObj.id}">[${sourceObj.display_id}]</a></sup>`;
         } else {
           if (debugMode) {
             console.warn('Could not resolve citation:', citationContent);
@@ -266,19 +252,18 @@
     sourcesHtml += `<h4 class="text-sm font-semibold text-gray-700 mb-2">Sources Utilized</h4>`;
     sourcesHtml += `<ol class="text-sm text-gray-600 space-y-1 pl-4">`;
     
-    // Use sequential numbering for display consistency (1, 2, 3, etc.)
-    sources.forEach((source, index) => {
-      const displayNumber = index + 1; // Sequential display numbering
-      const actualCitationId = source.citation_id || displayNumber; // Actual ID for backend lookup
-      const title = escapeHtml(source.title || `Source ${displayNumber}`);
-      
+    sources.forEach(source => {
+      const displayId = source.display_id || '';
+      const uniqueId = source.id || displayId;
+      const title = escapeHtml(source.title || `Source ${displayId}`);
+
       sourcesHtml += `
-        <li value="${displayNumber}">
-          <a href="javascript:void(0);" 
-             class="session-citation-link text-blue-600 hover:underline cursor-pointer" 
-             data-citation-id="${actualCitationId}"
-             onclick="handleSessionCitationClick(${actualCitationId})">
-            ${title}
+        <li>
+          <a id="source-${uniqueId}" href="javascript:void(0);"
+             class="session-citation-link text-blue-600 hover:underline cursor-pointer"
+             data-source-id="${uniqueId}"
+             onclick="handleSessionCitationClick('${uniqueId}')">
+            [${displayId}] ${title}
           </a>
         </li>`;
     });
@@ -289,35 +274,35 @@
 
   /**
    * Handle citation link clicks
-   * @param {number} citationId - Citation ID that was clicked
+   * @param {string|number} sourceId - Source ID that was clicked
    */
-  async function handleSessionCitationClick(citationId) {
+  async function handleSessionCitationClick(sourceId) {
     if (debugMode) {
-      console.log('🖱️ Citation clicked:', citationId);
+      console.log('🖱️ Citation clicked:', sourceId);
     }
 
     try {
-      const source = await getSourceByCitationId(citationId);
-      
+      const source = await getSourceById(sourceId);
+
       if (source) {
-        showSourceModal(citationId, source.title || `Source ${citationId}`, source.content || '');
+        showSourceModal(source.display_id || sourceId, source.title || `Source ${source.display_id || sourceId}`, source.content || '');
       } else {
-        showSourceModal(citationId, 'Source Not Available', 'This source could not be retrieved.');
+        showSourceModal(sourceId, 'Source Not Available', 'This source could not be retrieved.');
       }
-      
+
     } catch (error) {
       console.error('Error handling citation click:', error);
-      showSourceModal(citationId, 'Error', 'Failed to retrieve source information.');
+      showSourceModal(sourceId, 'Error', 'Failed to retrieve source information.');
     }
   }
 
   /**
    * Show source content in a modal
-   * @param {number} citationId - Citation ID
+   * @param {string|number} displayId - Display ID
    * @param {string} title - Source title
    * @param {string} content - Source content
    */
-  function showSourceModal(citationId, title, content) {
+  function showSourceModal(displayId, title, content) {
     // Remove existing modal if any
     const existingModal = document.getElementById('source-modal');
     if (existingModal) {
@@ -331,7 +316,7 @@
     modal.innerHTML = `
       <div class="bg-white rounded-lg max-w-4xl max-h-[80vh] p-6 m-4 overflow-hidden flex flex-col">
         <div class="flex justify-between items-center mb-4">
-          <h3 class="text-lg font-semibold text-gray-900">[${citationId}] ${escapeHtml(title)}</h3>
+          <h3 class="text-lg font-semibold text-gray-900">[${displayId}] ${escapeHtml(title)}</h3>
           <button id="close-modal" class="text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
         </div>
         <div class="flex-1 overflow-y-auto">
@@ -382,12 +367,9 @@
   function globalCitationClickHandler(e) {
     const target = e.target.closest('.session-citation-link');
     if (target) {
-      e.preventDefault();
-      e.stopPropagation();
-      
-      const citationId = parseInt(target.getAttribute('data-citation-id'));
-      if (citationId) {
-        handleSessionCitationClick(citationId);
+      const sourceId = target.getAttribute('data-source-id');
+      if (sourceId) {
+        handleSessionCitationClick(sourceId);
       }
     }
   }
@@ -400,7 +382,7 @@
   function fallbackSources(sources) {
     return sources.map((source, index) => ({
       ...source,
-      citation_id: index + 1,
+      id: source.id || `fallback_${index + 1}`,
       display_id: String(index + 1),
       session_id: sessionId,
       hash: `fallback_${index + 1}`
@@ -476,7 +458,9 @@
   // Export to global scope
   window.SessionCitationSystem = {
     registerSources,
-    getSourceByCitationId,
+    getSourceById,
+    // Backward compatibility
+    getSourceByCitationId: getSourceById,
     formatTextWithCitations,
     generateSourcesSection,
     handleSessionCitationClick,
