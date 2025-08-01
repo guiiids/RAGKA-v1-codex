@@ -1154,10 +1154,12 @@ class FlaskRAGAssistantWithHistory:
             renumber_map = {}
             cited_sources = []
             for new_id, src in enumerate(cited_raw, 1):
-                old_id = src["id"]
-                renumber_map[old_id] = str(new_id)
+                internal_id = src["id"]
+                display_id = str(new_id)
+                renumber_map[internal_id] = display_id
                 entry = {
-                    "id": str(new_id),
+                    "id": internal_id,
+                    "display_id": display_id,
                     "title": src["title"],
                     "content": src["content"],
                     "parent_id": src.get("parent_id", ""),
@@ -1167,9 +1169,14 @@ class FlaskRAGAssistantWithHistory:
                     entry["url"] = src["url"]
                 cited_sources.append(entry)
 
+            if cited_sources:
+                logger.info(f"Processed {len(cited_sources)} cited sources. Example - Unique ID: {cited_sources[0]['id']}, Display ID: {cited_sources[0]['display_id']}")
+            else:
+                logger.info("Processed 0 cited sources.")
+
             # Apply new numbering to the answer text
             for old, new in renumber_map.items():
-                answer = re.sub(rf"\[{old}\]", f"[{new}]", answer)
+                answer = re.sub(rf"\[{re.escape(old)}\]", f"[{new}]", answer)
 
 
             # Step 8: (Optional) run fact check
@@ -1315,16 +1322,18 @@ class FlaskRAGAssistantWithHistory:
             
             # Filter cited sources
             cited_raw = self._filter_cited(collected_answer, src_map)
-            
+
             # Renumber in cited order: 1, 2, 3…
             renumber_map = {}
             cited_sources = []
             for new_id, src in enumerate(cited_raw, 1):
-                old_id = src["id"]
-                renumber_map[old_id] = str(new_id)
+                internal_id = src["id"]
+                display_id = str(new_id)
+                renumber_map[internal_id] = display_id
                 entry = {
-                    "id": str(new_id), 
-                    "title": src["title"], 
+                    "id": internal_id,
+                    "display_id": display_id,
+                    "title": src["title"],
                     "content": src["content"],
                     "parent_id": src.get("parent_id", ""),  # Include parent_id in cited sources
                     "is_procedural": src.get("is_procedural", False)
@@ -1332,10 +1341,15 @@ class FlaskRAGAssistantWithHistory:
                 if "url" in src:
                     entry["url"] = src["url"]
                 cited_sources.append(entry)
-            
+
+            if cited_sources:
+                logger.info(f"Processed {len(cited_sources)} cited sources. Example - Unique ID: {cited_sources[0]['id']}, Display ID: {cited_sources[0]['display_id']}")
+            else:
+                logger.info("Processed 0 cited sources.")
+
             # Apply renumbering to the answer
             for old, new in renumber_map.items():
-                collected_answer = re.sub(rf"\[{old}\]", f"[{new}]", collected_answer)
+                collected_answer = re.sub(rf"\[{re.escape(old)}\]", f"[{new}]", collected_answer)
             
             # Get evaluation
             evaluation = self.fact_checker.evaluate_response(
