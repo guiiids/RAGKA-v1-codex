@@ -132,11 +132,19 @@
    * Format text with session-wide citations
    * @param {string} text - Raw text with citation markers
    * @param {Array} sources - Array of source objects (will be registered)
-   * @returns {Promise<string>} - Formatted HTML with citation links
+   * @returns {Promise<string>} - Formatted HTML with citation links. If the
+   *   text already contains pre-rendered citation links, it is returned
+   *   unchanged.
    */
   async function formatTextWithCitations(text, sources = []) {
     if (typeof text !== 'string') {
       return String(text || '');
+    }
+
+    // If citation links are already present, skip conversion to avoid
+    // reprocessing server-rendered citation links
+    if (text.includes('session-citation-link')) {
+      return text;
     }
 
     // Register sources first to get session-wide citation IDs
